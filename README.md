@@ -1,2 +1,2 @@
-# DDMPP
-Data-driven multifunctional polymerization platform: On-demand synthesis of copolymers with customized structures
+# MLFRP
+Machine Learning-Assisted Free Radical Polymerization for Tailor-Making (Co)polymer Synthesis
