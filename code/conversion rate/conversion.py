@@ -3,11 +3,6 @@ from sklearn.preprocessing import MinMaxScaler
 from sklearn.model_selection import cross_val_score, KFold, GridSearchCV
 import numpy as np
 from sklearn.svm import SVR
-import sys
-import os
-preprocess_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', 'preprocess'))
-sys.path.append(preprocess_dir)
-
 import processing
 import pandas as pd
 import joblib
@@ -49,7 +44,8 @@ if __name__ == "__main__":
     data_path = '../../data/All data is used for ML.xlsx'
     split_data_save_dir = './split_data'  # Directory for saving train/test sets
     model_save_dir = './model'
-    correct_columns = ['redox', 'azo', 'ybc', 'C', 'T', 'AMPS', 'fe', 'conversion（%）']
+    correct_columns = ['C_i/C_m(wt/M)', 'C_ci/C_m(wt/M)', 'C_t/C_m(wt/M)', 'C_m (M)', 'T (°C)',
+                       'AMPS feed ratio (mol%)', 'C_c (mg/L)', 'conversion（%）']
 
     # Create model saving directory
     os.makedirs(model_save_dir, exist_ok=True)
@@ -61,7 +57,7 @@ if __name__ == "__main__":
 
     # -------------------------- Step 1: Load and validate data --------------------------
     try:
-        data = pd.read_excel(data_path, sheet_name='结果2', skiprows=[0], names=correct_columns)
+        data = pd.read_excel(data_path, sheet_name='Conversion', skiprows=[0], names=correct_columns)
         print(f"\n Data loaded successfully, total {data.shape[0]} samples, {data.shape[1]} columns")
         print("First 5 rows of data preview:")
         print(data[correct_columns].head(5))

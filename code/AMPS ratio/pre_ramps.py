@@ -9,7 +9,7 @@ from glob import glob  # Used to get all model file paths
 def read_pred_data(file_path, expected_columns):
     """Read prediction data and validate column names"""
     try:
-        df = pd.read_excel(file_path, sheet_name='结果3', skiprows=[0], names=expected_columns)
+        df = pd.read_excel(file_path, sheet_name='AMPS_ratio', skiprows=[0], names=expected_columns)
         print(f" Prediction data loaded successfully, total {df.shape[0]} samples, {df.shape[1]} columns")
         print("First 3 rows preview:")
         print(df.head(3))
@@ -87,7 +87,7 @@ def predict_with_model(model_path, X_scaled):
 
         # Predict directly
         y_pred = model.predict(X_scaled)
-        # Ensure predictions are non-negative based on R-AMPS business meaning
+        # Ensure predictions are non-negative based on AMPS ratio (mol%) business meaning
         y_pred = np.maximum(y_pred, 0)
 
         print(f"  {model_name} prediction completed, first 5 predictions: {np.round(y_pred[:5], 2)}")
@@ -100,7 +100,7 @@ def predict_with_model(model_path, X_scaled):
 def evaluate_and_save_all(df, all_predictions, output_path):
     """Merge predictions from all models, calculate errors and save"""
     result_df = df.copy()
-    target_col = 'R-AMPS'  # Target column name
+    target_col = 'AMPS ratio (mol%)'  # Target column name
 
     # Add prediction columns for all models
     for model_name, y_pred in all_predictions.items():
@@ -168,15 +168,16 @@ def evaluate_and_save_all(df, all_predictions, output_path):
 def main():
     # Configuration parameters
     config = {
-        'pred_data_path': '../data/All data is used for ML.xlsx',  # Path to prediction data
-        'model_dir': './model',  # Training model directory for R-AMPS
+        'pred_data_path': '../../data/All data is used for ML.xlsx',  # Path to prediction data
+        'model_dir': './model',  # Training model directory for AMPS ratio (mol%)
         'stats_path': './model/training_stats.pkl',     # Training statistics (without target_epsilon)
         'feature_info_path': './model/feature_info.pkl',# Feature information (including scaler)
-        'output_path': 'Predicted results of AMPS ratio.csv'          # Merged results save path
+        'output_path': 'Predicted results of AMPS ratio.csv'  # Merged results save path
     }
 
-    # Column names from training (7 features + 1 target: R-AMPS)
-    expected_columns = ['redox', 'azo', 'ybc', 'C', 'T', 'AMPS', 'fe', 'R-AMPS']
+    # Column names from training (7 features + 1 target: AMPS ratio (mol%))
+    expected_columns = ['C_i/C_m(wt/M)', 'C_ci/C_m(wt/M)', 'C_t/C_m(wt/M)', 'C_m (M)', 'T (°C)',
+                       'AMPS feed ratio (mol%)', 'C_c (mg/L)', 'AMPS ratio (mol%)']
 
     # 1. Read prediction data
     df_pred = read_pred_data(config['pred_data_path'], expected_columns)

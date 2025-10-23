@@ -44,7 +44,8 @@ if __name__ == "__main__":
     data_path = '../../data/All data is used for ML.xlsx'
     split_data_save_dir = './split_data'  # Directory for saving train/test sets
     model_save_dir = './model'
-    correct_columns = ['redox', 'azo', 'ybc', 'C', 'T', 'AMPS', 'fe', 'R-AMPS']
+    correct_columns = ['C_i/C_m(wt/M)', 'C_ci/C_m(wt/M)', 'C_t/C_m(wt/M)', 'C_m (M)', 'T (°C)',
+                       'AMPS feed ratio (mol%)', 'C_c (mg/L)', 'AMPS ratio (mol%)']
 
     # Create model saving directory
     os.makedirs(model_save_dir, exist_ok=True)
@@ -56,7 +57,7 @@ if __name__ == "__main__":
 
     # -------------------------- Step 1: Load and validate data --------------------------
     try:
-        data = pd.read_excel(data_path, sheet_name='结果3', skiprows=[0], names=correct_columns)
+        data = pd.read_excel(data_path, sheet_name='AMPS_ratio', skiprows=[0], names=correct_columns)
         print(f"\n Data loaded successfully, total {data.shape[0]} samples, {data.shape[1]} columns")
         print("First 5 rows of data preview:")
         print(data[correct_columns].head(5))
@@ -88,14 +89,14 @@ if __name__ == "__main__":
     # -------------------------- Step 3: Target variable processing (log transformation only) --------------------------
 
     # Use the original target variable directly, no log transformation
-    y_train = train_data['R-AMPS'].copy()
-    y_test = test_data['R-AMPS'].copy()
+    y_train = train_data['AMPS ratio (mol%)'].copy()
+    y_test = test_data['AMPS ratio (mol%)'].copy()
 
-    print(f"\n Target variable processing completed (using original R-AMPS values)")
+    print(f"\n Target variable processing completed (using original AMPS ratio (mol%) values)")
 
     # -------------------------- Step 4: Feature processing (MinMaxScaler) --------------------------
-    X_train = train_data.drop('R-AMPS', axis=1)
-    X_test = test_data.drop('R-AMPS', axis=1)
+    X_train = train_data.drop('AMPS ratio (mol%)', axis=1)
+    X_test = test_data.drop('AMPS ratio (mol%)', axis=1)
 
     scaler = MinMaxScaler()
     X_train_scaled = scaler.fit_transform(X_train)
@@ -120,8 +121,8 @@ if __name__ == "__main__":
         X_test_selected, columns=X_train.columns, index=test_data.index
     )
     # Target variable name changed to original name
-    y_train = pd.Series(y_train, name='R-AMPS', index=train_data.index)
-    y_test = pd.Series(y_test, name='R-AMPS', index=test_data.index)
+    y_train = pd.Series(y_train, name='AMPS ratio (mol%)', index=train_data.index)
+    y_test = pd.Series(y_test, name='AMPS ratio (mol%)', index=test_data.index)
 
     # -------------------------- Step 7: Save training statistics --------------------------
     training_stats = {

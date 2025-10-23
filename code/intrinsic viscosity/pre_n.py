@@ -106,19 +106,19 @@ def evaluate_and_save_all(df, all_predictions, output_path):
 
     # Add prediction columns for all models
     for model_name, y_pred in all_predictions.items():
-        result_df[f'predicted[n]_{model_name}'] = np.round(y_pred, 2)
+        result_df[f'predicted[η] (mL/g)_{model_name}'] = np.round(y_pred, 2)
 
         # Calculate errors for each model
-        if '[n]' in result_df.columns:
-            result_df[f'absolute_error_{model_name}'] = np.round(result_df['[n]'] - result_df[f'predicted[n]_{model_name}'], 2)
+        if '[η] (mL/g)' in result_df.columns:
+            result_df[f'absolute_error_{model_name}'] = np.round(result_df['[η] (mL/g)'] - result_df[f'predicted[η] (mL/g)_{model_name}'], 2)
             result_df[f'relative_error(%)_{model_name}'] = np.round(
-                (result_df[f'absolute_error_{model_name}'] / result_df['[n]']) * 100, 2
+                (result_df[f'absolute_error_{model_name}'] / result_df['[η] (mL/g)']) * 100, 2
             )
 
     # Calculate evaluation metrics for each model
-    if '[n]' in result_df.columns and not result_df['[n]'].isnull().all():
-        valid_mask = result_df['[n]'] > 0
-        y_true_valid = result_df.loc[valid_mask, '[n]']
+    if '[η] (mL/g)' in result_df.columns and not result_df['[η] (mL/g)'].isnull().all():
+        valid_mask = result_df['[η] (mL/g)'] > 0
+        y_true_valid = result_df.loc[valid_mask, '[η] (mL/g)']
 
         print(f"\n{'=' * 70}")
         print(f" Prediction evaluation metrics for all models (original scale)")
@@ -126,7 +126,7 @@ def evaluate_and_save_all(df, all_predictions, output_path):
         metrics_summary = []
 
         for model_name in all_predictions.keys():
-            y_pred_valid = result_df.loc[valid_mask, f'predicted[n]_{model_name}']
+            y_pred_valid = result_df.loc[valid_mask, f'predicted[η] (mL/g)_{model_name}']
 
             # Calculate metrics
             r2 = round(r2_score(y_true_valid, y_pred_valid), 4)
@@ -168,7 +168,8 @@ def main():
     }
 
     # Column names from training (7 features + 1 target)
-    expected_columns = ['redox', 'azo', 'ybc', 'C', 'T', 'AMPS', 'fe', '[n]']
+    expected_columns =  ['C_i/C_m(wt/M)', 'C_ci/C_m(wt/M)', 'C_t/C_m(wt/M)', 'C_m (M)', 'T (°C)',
+                       'AMPS feed ratio (mol%)', 'C_c (mg/L)', '[η] (mL/g)']
 
     # 1. Read prediction data
     df_pred = read_pred_data(config['pred_data_path'], expected_columns)

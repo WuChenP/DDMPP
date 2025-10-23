@@ -9,7 +9,7 @@ from glob import glob  # Used to get all model file paths
 def read_pred_data(file_path, expected_columns):
     """Read prediction data and validate column names"""
     try:
-        df = pd.read_excel(file_path, sheet_name='结果2', skiprows=[0], names=expected_columns)
+        df = pd.read_excel(file_path, sheet_name='Conversion', skiprows=[0], names=expected_columns)
         print(f" Prediction data loaded successfully, total {df.shape[0]} samples, {df.shape[1]} columns")
         print("First 3 rows preview:")
         print(df.head(3))
@@ -168,7 +168,7 @@ def evaluate_and_save_all(df, all_predictions, output_path):
 def main():
     # Configuration parameters
     config = {
-        'pred_data_path': '../data/All data is used for ML.xlsx',  # Path to prediction data
+        'pred_data_path': '../../data/All data is used for ML.xlsx',  # Path to prediction data
         'model_dir': './model',  # Training model directory for conversion（%）
         'stats_path': './model/training_stats.pkl',     # Training statistics (without target_epsilon)
         'feature_info_path': './model/feature_info.pkl',# Feature information (including scaler)
@@ -176,7 +176,8 @@ def main():
     }
 
     # Column names from training (7 features + 1 target: conversion（%）)
-    expected_columns = ['redox', 'azo', 'ybc', 'C', 'T', 'AMPS', 'fe', 'conversion（%）']
+    expected_columns = ['C_i/C_m(wt/M)', 'C_ci/C_m(wt/M)', 'C_t/C_m(wt/M)', 'C_m (M)', 'T (°C)',
+                       'AMPS feed ratio (mol%)', 'C_c (mg/L)', 'conversion（%）']
 
     # 1. Read prediction data
     df_pred = read_pred_data(config['pred_data_path'], expected_columns)

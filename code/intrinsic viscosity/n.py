@@ -44,7 +44,8 @@ if __name__ == "__main__":
     data_path = '../../data/All data is used for ML.xlsx'
     split_data_save_dir = './split_data'  # Directory for saving train/test sets
     model_save_dir = './model'
-    correct_columns = ['redox', 'azo', 'ybc', 'C', 'T', 'AMPS', 'fe', '[n]']
+    correct_columns = ['C_i/C_m(wt/M)', 'C_ci/C_m(wt/M)', 'C_t/C_m(wt/M)', 'C_m (M)', 'T (°C)',
+                       'AMPS feed ratio (mol%)', 'C_c (mg/L)', '[η] (mL/g)']
 
     # Create model saving directory
     os.makedirs(model_save_dir, exist_ok=True)
@@ -87,13 +88,13 @@ if __name__ == "__main__":
         exit()
 
     # -------------------------- Step 3: Target variable processing (log transformation only) --------------------------
-    y_train = np.log(train_data['[n]'] + 1e-9)
-    y_test = np.log(test_data['[n]'] + 1e-9)
+    y_train = np.log(train_data['[η] (mL/g)'] + 1e-9)
+    y_test = np.log(test_data['[η] (mL/g)'] + 1e-9)
     print(f"\n Target variable processing completed")
 
     # -------------------------- Step 4: Feature processing (MinMaxScaler) --------------------------
-    X_train = train_data.drop('[n]', axis=1)
-    X_test = test_data.drop('[n]', axis=1)
+    X_train = train_data.drop('[η] (mL/g)', axis=1)
+    X_test = test_data.drop('[η] (mL/g)', axis=1)
 
     scaler = MinMaxScaler()
     X_train_scaled = scaler.fit_transform(X_train)
@@ -117,8 +118,8 @@ if __name__ == "__main__":
     X_test_selected = pd.DataFrame(
         X_test_selected, columns=X_train.columns, index=test_data.index
     )
-    y_train = pd.Series(y_train, name='log_[n]', index=train_data.index)
-    y_test = pd.Series(y_test, name='log_[n]', index=test_data.index)
+    y_train = pd.Series(y_train, name='log_[η] (mL/g)', index=train_data.index)
+    y_test = pd.Series(y_test, name='log_[η] (mL/g)', index=test_data.index)
 
     # -------------------------- Step 7: Save training statistics --------------------------
     training_stats = {
