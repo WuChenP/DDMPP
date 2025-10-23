@@ -3,19 +3,24 @@ from sklearn.preprocessing import MinMaxScaler
 from sklearn.model_selection import cross_val_score, KFold, GridSearchCV
 import numpy as np
 from sklearn.svm import SVR
+import sys
+import os
+preprocess_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', 'preprocess'))
+sys.path.append(preprocess_dir)
+
 import processing
 import pandas as pd
 import joblib
 from sklearn.ensemble import RandomForestRegressor, GradientBoostingRegressor
 from sklearn.tree import DecisionTreeRegressor
-from xgboost import XGBRegressor  # sklearn风格接口
+from xgboost import XGBRegressor  # sklearn-style interface
 import os
 from sklearn.metrics import mean_squared_error
 
 
-# -------------------------- 1. 核心辅助函数--------------------------
+# -------------------------- 1. Core Auxiliary Functions --------------------------
 def get_feature_importance(model, model_name, feature_names):
-    """计算特征重要性，适配不同模型类型"""
+    """Calculate feature importance, adapted to different model types"""
     try:
         if model_name == 'SVR':
             return np.abs(model.coef_[0]) if hasattr(model, 'coef_') else None
@@ -26,106 +31,104 @@ def get_feature_importance(model, model_name, feature_names):
         elif hasattr(model, 'feature_importances_'):
             return model.feature_importances_
     except Exception as e:
-        print(f"  {model_name} 特征重要性计算失败: {str(e)}")
+        print(f"  {model_name} feature importance calculation failed: {str(e)}")
         return None
 
 
 def get_sample_size_range(X_train):
-    """生成训练样本数量序列（从40开始，避免小样本无效训练）"""
+    """Generate training sample size sequence (starting from 40 to avoid invalid training with small samples)"""
     total_samples = len(X_train)
     sample_sizes = list(range(40, total_samples + 1, 5))
     return sample_sizes if sample_sizes else [total_samples]
 
 
-# -------------------------- 2. 主训练流程 --------------------------
+# -------------------------- 2. Main Training Process --------------------------
 if __name__ == "__main__":
-    # 配置参数
+    # Configuration parameters
     random_state = 42
-    data_path = '../data/All data is used for ML.xlsx'
-    split_data_save_dir = './split_data'  # 训练/测试集保存目录
+    data_path = '../../data/All data is used for ML.xlsx'
+    split_data_save_dir = './split_data'  # Directory for saving train/test sets
     model_save_dir = './model'
     correct_columns = ['redox', 'azo', 'ybc', 'C', 'T', 'AMPS', 'fe', 'conversion（%）']
 
-    # 创建模型保存目录
+    # Create model saving directory
     os.makedirs(model_save_dir, exist_ok=True)
-    print(f" 模型将保存至: {model_save_dir}")
+    print(f" Models will be saved to: {model_save_dir}")
 
-    # 创建拆分数据保存目录
+    # Create split data saving directory
     os.makedirs(split_data_save_dir, exist_ok=True)
-    print(f" 拆分后的训练/测试集将保存至: {split_data_save_dir}")
+    print(f" Split train/test sets will be saved to: {split_data_save_dir}")
 
-    # -------------------------- 步骤1：读取并验证数据 --------------------------
+    # -------------------------- Step 1: Load and validate data --------------------------
     try:
         data = pd.read_excel(data_path, sheet_name='结果2', skiprows=[0], names=correct_columns)
-        print(f"\n 数据读取成功，共 {data.shape[0]} 条样本，{data.shape[1]} 列")
-        print("数据前5行预览:")
+        print(f"\n Data loaded successfully, total {data.shape[0]} samples, {data.shape[1]} columns")
+        print("First 5 rows of data preview:")
         print(data[correct_columns].head(5))
     except Exception as e:
-        print(f" 数据读取失败: {str(e)}")
+        print(f" Data loading failed: {str(e)}")
         exit()
 
-    # -------------------------- 步骤2：先拆分训练集/测试集 --------------------------
+    # -------------------------- Step 2: Split train/test sets first --------------------------
     try:
         train_data, test_data = processing.split_data(
             data, train_size=0.8, random_state=random_state
         )
-        print(f"\n 数据拆分完成:")
-        print(f"  - 训练集: {train_data.shape[0]} 条样本")
-        print(f"  - 测试集: {test_data.shape[0]} 条样本")
-        # -------------------------- 保存拆分后的训练集和测试集 --------------------------
-        # 保存为CSV
+        print(f"\n Data splitting completed:")
+        print(f"  - Training set: {train_data.shape[0]} samples")
+        print(f"  - Test set: {test_data.shape[0]} samples")
+        # -------------------------- Save split train and test sets --------------------------
+        # Save as CSV
         train_csv_path = f"{split_data_save_dir}/train_data_randomstate_{random_state}.csv"
         test_csv_path = f"{split_data_save_dir}/test_data_randomstate_{random_state}.csv"
         train_data.to_csv(train_csv_path, index=True, encoding="utf-8")
         test_data.to_csv(test_csv_path, index=True, encoding="utf-8")
 
-        print(f"  训练集已保存至: \n      - {train_csv_path}")
-        print(f"  测试集已保存至: \n      - {test_csv_path}")
+        print(f"  Training set saved to: \n      - {train_csv_path}")
+        print(f"  Test set saved to: \n      - {test_csv_path}")
     except Exception as e:
-        print(f" 数据拆分失败: {str(e)}")
+        print(f" Data splitting failed: {str(e)}")
         exit()
 
-    # -------------------------- 步骤3：目标变量处理（仅对数变换） --------------------------
+    # -------------------------- Step 3: Target variable processing (log transformation only) --------------------------
 
-    # 直接使用原始目标变量，无对数变换
+    # Use the original target variable directly, no log transformation
     y_train = train_data['conversion（%）'].copy()
     y_test = test_data['conversion（%）'].copy()
 
-    print(f"\n 目标变量处理完成（使用原始conversion（%）值）")
+    print(f"\n Target variable processing completed (using original conversion（%）values)")
 
-    # -------------------------- 步骤4：特征处理（MinMaxScaler） --------------------------
+    # -------------------------- Step 4: Feature processing (MinMaxScaler) --------------------------
     X_train = train_data.drop('conversion（%）', axis=1)
     X_test = test_data.drop('conversion（%）', axis=1)
 
     scaler = MinMaxScaler()
     X_train_scaled = scaler.fit_transform(X_train)
     X_test_scaled = scaler.transform(X_test)
-    print(f" 特征缩放完成（MinMaxScaler）")
+    print(f" Feature scaling completed (MinMaxScaler)")
 
-    # -------------------------- 步骤5：特征选择 --------------------------
+    # -------------------------- Step 5: Feature selection --------------------------
     try:
         X_train_selected, X_test_selected = processing.select_features(
             X_train_scaled, y_train, X_test_scaled, n_features=7
         )
-        print(f" 特征选择完成，保留 {X_train_selected.shape[1]} 个特征")
+        print(f" Feature selection completed, retained {X_train_selected.shape[1]} features")
     except Exception as e:
-        print(f" 特征选择失败: {str(e)}")
+        print(f" Feature selection failed: {str(e)}")
         exit()
 
-    # -------------------------- 步骤6：格式统一 --------------------------
+    # -------------------------- Step 6: Format unification --------------------------
     X_train_selected = pd.DataFrame(
         X_train_selected, columns=X_train.columns, index=train_data.index
     )
     X_test_selected = pd.DataFrame(
         X_test_selected, columns=X_train.columns, index=test_data.index
     )
-    # y_train = pd.Series(y_train, name='log_conversion（%）', index=train_data.index)
-    # y_test = pd.Series(y_test, name='log_conversion（%）', index=test_data.index)
-    # 目标变量名称改为原始名称
+    # Target variable name changed to original name
     y_train = pd.Series(y_train, name='conversion（%）', index=train_data.index)
     y_test = pd.Series(y_test, name='conversion（%）', index=test_data.index)
 
-    # -------------------------- 步骤7：保存训练统计量 --------------------------
+    # -------------------------- Step 7: Save training statistics --------------------------
     training_stats = {
         'feature_names': X_train.columns.tolist(),
         'scaler_min': scaler.data_min_.tolist(),
@@ -133,15 +136,15 @@ if __name__ == "__main__":
         # 'target_epsilon': 1e-9
     }
     joblib.dump(training_stats, f"{model_save_dir}/training_stats.pkl")
-    print(f"\n 训练统计量保存至: {model_save_dir}/training_stats.pkl")
+    print(f"\n Training statistics saved to: {model_save_dir}/training_stats.pkl")
 
-    # -------------------------- 步骤8：定义模型 --------------------------
+    # -------------------------- Step 8: Define models --------------------------
     models = {
         'Random Forest': RandomForestRegressor(n_estimators=50, random_state=random_state),
         'Decision Tree': DecisionTreeRegressor(random_state=random_state),
         'GBT': GradientBoostingRegressor(n_estimators=100, random_state=random_state),
         'XGB': XGBRegressor(n_estimators=100, learning_rate=0.1, random_state=random_state),
-         # SVR使用网格搜索优化
+         # SVR optimized using grid search
         'SVR': GridSearchCV(
         estimator=SVR(),
         param_grid={
@@ -157,45 +160,45 @@ if __name__ == "__main__":
     ),
         'Linear Regression': LinearRegression(n_jobs=-1)
     }
-    print(f"\n 待评估模型: {list(models.keys())}")
+    print(f"\n Models to evaluate: {list(models.keys())}")
 
     model_performance = {}
 
-    # -------------------------- 步骤9：训练与评估模型 --------------------------
+    # -------------------------- Step 9: Train and evaluate models --------------------------
     for model_name, model in models.items():
         print(f"\n{'='*70}")
-        print(f" 正在评估模型: {model_name}")
+        print(f" Evaluating model: {model_name}")
         print(f"{'='*70}")
 
         sample_sizes = get_sample_size_range(X_train_selected)
-        print(f"  样本量序列: {sample_sizes}（共 {len(sample_sizes)} 个点）")
+        print(f"  Sample size sequence: {sample_sizes} (total {len(sample_sizes)} points)")
 
         train_r2_list = []
         val_r2_list = []
         kf = KFold(n_splits=5, shuffle=True, random_state=random_state)
 
-        # 仅对SVR进行特殊处理
+        # Special handling only for SVR
         if model_name == 'SVR':
-            # 先进行超参数搜索
+            # Perform hyperparameter search first
             model.fit(X_train_selected, y_train)
             best_svr = model.best_estimator_
-            print(f"  SVR最优参数: {model.best_params_}")
-            print(f"  SVR最优交叉验证R²: {round(model.best_score_, 4)}")
+            print(f"  SVR best parameters: {model.best_params_}")
+            print(f"  SVR best cross-validation R²: {round(model.best_score_, 4)}")
             model = best_svr
         else:
-            model = model  # 其他模型不变
+            model = model  # Other models remain unchanged
 
-        # 按样本量递增训练
+        # Train with increasing sample sizes
         for sample_size in sample_sizes:
-            # 用np.random.seed替代random_state参数，确保每次运行结果一致
-            np.random.seed(random_state + sample_size)  # +sample_size避免不同样本量随机结果重复
+            # Use np.random.seed instead of random_state parameter to ensure consistent results across runs
+            np.random.seed(random_state + sample_size)  # +sample_size to avoid duplicate random results for different sample sizes
             sample_indices = np.random.choice(
-                len(X_train_selected), size=sample_size, replace=False  # 移除random_state参数
+                len(X_train_selected), size=sample_size, replace=False  # Remove random_state parameter
             )
             X_sample = X_train_selected.iloc[sample_indices]
             y_sample = y_train.iloc[sample_indices]
 
-            # 训练与评估
+            # Train and evaluate
             model.fit(X_sample, y_sample)
             train_r2 = round(model.score(X_sample, y_sample), 4)
             val_r2 = round(np.mean(cross_val_score(model, X_sample, y_sample, cv=kf, scoring='r2')), 4)
@@ -203,40 +206,40 @@ if __name__ == "__main__":
             train_r2_list.append(train_r2)
             val_r2_list.append(val_r2)
 
-            print(f"  样本量={sample_size:4d} | 训练R²={train_r2:6.4f} | 验证R²={val_r2:6.4f}")
+            print(f"  Sample size={sample_size:4d} | Train R²={train_r2:6.4f} | Validation R²={val_r2:6.4f}")
 
-        # 全量数据交叉验证
+        # Cross-validation with full dataset
         full_cv_r2 = cross_val_score(model, X_train_selected, y_train, cv=kf, scoring='r2')
         full_cv_mean = round(np.mean(full_cv_r2), 4)
         full_cv_std = round(np.std(full_cv_r2), 4)
-        print(f"\n  全量数据5折CV:")
-        print(f"    R²分数: {np.round(full_cv_r2, 4)}")
-        print(f"    平均R²: {full_cv_mean} (±{full_cv_std})")
+        print(f"\n  5-fold CV with full dataset:")
+        print(f"    R² scores: {np.round(full_cv_r2, 4)}")
+        print(f"    Mean R²: {full_cv_mean} (±{full_cv_std})")
 
-        # 测试集评估
+        # Test set evaluation
         model.fit(X_train_selected, y_train)
         y_pred = model.predict(X_test_selected)
         test_r2 = round(model.score(X_test_selected, y_test), 4)
         test_mse = round(mean_squared_error(y_test, y_pred), 4)
-        print(f"  测试集性能:")
+        print(f"  Test set performance:")
         print(f"    R²: {test_r2} | MSE: {test_mse}")
 
-        # 特征重要性
+        # Feature importance
         feature_importance = get_feature_importance(model, model_name, X_train.columns.tolist())
         if feature_importance is not None:
-            # 归一化线性回归/SVR的特征重要性
+            # Normalize feature importance for Linear Regression/SVR
             if model_name in ['Linear Regression', 'SVR']:
                 feature_importance = feature_importance / np.sum(feature_importance)
-            # 打印全部特征
+            # Print all features
             importance_df = pd.DataFrame({
                 'Feature': X_train.columns,
                 'Importance': np.round(feature_importance, 4)
             }).sort_values('Importance', ascending=False)
-            print(f"\n  所有特征重要性（按重要性排序）:")
-            print(importance_df.to_string(index=False))  # 打印全部特征，不限制数量
+            print(f"\n  All feature importance (sorted by importance):")
+            print(importance_df.to_string(index=False))  # Print all features without index
 
 
-        # 保存性能
+        # Save performance
         model_performance[model_name] = {
             'model': model,
             'cv_mean_r2': full_cv_mean,
@@ -246,49 +249,49 @@ if __name__ == "__main__":
             'feature_importance': feature_importance
         }
 
-    # -------------------------- 步骤10：保存模型（按R²排序） --------------------------
+    # -------------------------- Step 10: Save models (sorted by R²) --------------------------
     sorted_models = sorted(
         model_performance.items(), key=lambda x: x[1]['test_r2'], reverse=True
     )
 
     print(f"\n{'='*70}")
-    print(f" 模型性能排名（按测试集R²）")
+    print(f" Model performance ranking (by test set R²)")
     print(f"{'='*70}")
 
     for rank, (model_name, info) in enumerate(sorted_models, 1):
         model_path = f"{model_save_dir}/{rank}_{model_name.replace(' ', '_').lower()}_model.pkl"
         joblib.dump(info['model'], model_path)
 
-        print(f"  第{rank}名: {model_name}")
-        print(f"    - 测试集R²: {info['test_r2']} | MSE: {info['test_mse']}")
-        print(f"    - 交叉验证R²: {info['cv_mean_r2']} (±{info['cv_std_r2']})")
-        print(f"    - 模型保存至: {model_path}")
+        print(f"  Rank {rank}: {model_name}")
+        print(f"    - Test set R²: {info['test_r2']} | MSE: {info['test_mse']}")
+        print(f"    - Cross-validation R²: {info['cv_mean_r2']} (±{info['cv_std_r2']})")
+        print(f"    - Model saved to: {model_path}")
         print()
 
-    # -------------------------- 步骤11：保存特征信息 --------------------------
+    # -------------------------- Step 11: Save feature information --------------------------
     feature_info = {
         'feature_names': X_train.columns.tolist(),
         'scaler': scaler
     }
     joblib.dump(feature_info, f"{model_save_dir}/feature_info.pkl")
-    print(f" 特征信息保存至: {model_save_dir}/feature_info.pkl")
+    print(f" Feature information saved to: {model_save_dir}/feature_info.pkl")
 
-    # -------------------------- 步骤12：打印汇总表 --------------------------
+    # -------------------------- Step 12: Print summary table --------------------------
     print(f"\n{'='*90}")
-    print(f" 模型性能汇总表")
+    print(f" Model Performance Summary Table")
     print(f"{'='*90}")
     summary_data = []
     for rank, (model_name, info) in enumerate(sorted_models, 1):
         summary_data.append({
-            '排名': rank,
-            '模型': model_name,
-            'CV平均R²': info['cv_mean_r2'],
-            'CV标准差': info['cv_std_r2'],
-            '测试集R²': info['test_r2'],
-            '测试集MSE': info['test_mse']
+            'Rank': rank,
+            'Model': model_name,
+            'CV Mean R²': info['cv_mean_r2'],
+            'CV Std Dev': info['cv_std_r2'],
+            'Test Set R²': info['test_r2'],
+            'Test Set MSE': info['test_mse']
         })
     summary_df = pd.DataFrame(summary_data)
     print(summary_df.to_string(index=False))
     print(f"{'='*90}")
 
-    print(f"\n 所有模型训练完成！")
+    print(f"\n All models trained successfully!")
