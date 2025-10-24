@@ -176,7 +176,7 @@ def main():
     }
 
     # Column names from training (7 features + 1 target: conversion（%）)
-    expected_columns = ['C_i/C_m(wt/M)', 'C_ci/C_m(wt/M)', 'C_t/C_m(wt/M)', 'C_m (M)', 'T (°C)',
+    expected_columns = ['C_i/C_m((g/L)/M)', 'C_ci/C_m((g/L)/M)', 'C_t/C_m((g/L)/M)', 'C_m (M)', 'T (°C)',
                        'AMPS feed ratio (mol%)', 'C_c (mg/L)', 'conversion（%）']
 
     # 1. Read prediction data
